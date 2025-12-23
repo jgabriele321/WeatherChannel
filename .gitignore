@@ -1,0 +1,16 @@
+# Environment
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Output videos (generated, don't commit)
+output/*.mp4
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
