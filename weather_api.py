@@ -175,25 +175,99 @@ def get_description(condition: str) -> str:
 
 def get_fallback_forecast(city: dict) -> dict:
     """Return fallback data when API fails and no cache."""
+    from datetime import timedelta
     now = datetime.now()
-    days = []
     
+    # Varied fallback patterns based on city and season
+    is_imperial = city["units"] == "imperial"
+    month = now.month
+    
+    # Austin patterns - hot, sunny, occasional storms
+    austin_patterns = [
+        # Winter (Dec-Feb)
+        [
+            {"icon": "sun", "desc": "Sunny", "hi": 62, "lo": 41},
+            {"icon": "clouds", "desc": "Cloudy", "hi": 58, "lo": 38},
+            {"icon": "sun", "desc": "Clear", "hi": 65, "lo": 43},
+        ],
+        # Spring (Mar-May)
+        [
+            {"icon": "thunderstorm", "desc": "T'storms", "hi": 78, "lo": 58},
+            {"icon": "rain", "desc": "Showers", "hi": 72, "lo": 55},
+            {"icon": "sun", "desc": "Sunny", "hi": 82, "lo": 61},
+        ],
+        # Summer (Jun-Aug)
+        [
+            {"icon": "sun", "desc": "Hot", "hi": 98, "lo": 76},
+            {"icon": "sun", "desc": "Sunny", "hi": 101, "lo": 78},
+            {"icon": "sun", "desc": "Clear", "hi": 99, "lo": 75},
+        ],
+        # Fall (Sep-Nov)
+        [
+            {"icon": "sun", "desc": "Sunny", "hi": 85, "lo": 62},
+            {"icon": "clouds", "desc": "Pt Cloudy", "hi": 78, "lo": 58},
+            {"icon": "rain", "desc": "Showers", "hi": 72, "lo": 55},
+        ],
+    ]
+    
+    # London patterns - overcast, rainy, mild
+    london_patterns = [
+        # Winter (Dec-Feb)
+        [
+            {"icon": "clouds", "desc": "Overcast", "hi": 7, "lo": 2},
+            {"icon": "rain", "desc": "Drizzle", "hi": 6, "lo": 1},
+            {"icon": "clouds", "desc": "Cloudy", "hi": 8, "lo": 3},
+        ],
+        # Spring (Mar-May)
+        [
+            {"icon": "rain", "desc": "Showers", "hi": 14, "lo": 7},
+            {"icon": "clouds", "desc": "Pt Cloudy", "hi": 16, "lo": 9},
+            {"icon": "sun", "desc": "Sunny", "hi": 18, "lo": 10},
+        ],
+        # Summer (Jun-Aug)
+        [
+            {"icon": "sun", "desc": "Sunny", "hi": 24, "lo": 15},
+            {"icon": "clouds", "desc": "Pt Cloudy", "hi": 22, "lo": 14},
+            {"icon": "rain", "desc": "Showers", "hi": 20, "lo": 13},
+        ],
+        # Fall (Sep-Nov)
+        [
+            {"icon": "clouds", "desc": "Overcast", "hi": 15, "lo": 9},
+            {"icon": "rain", "desc": "Rainy", "hi": 12, "lo": 7},
+            {"icon": "clouds", "desc": "Cloudy", "hi": 10, "lo": 5},
+        ],
+    ]
+    
+    # Select season (0=winter, 1=spring, 2=summer, 3=fall)
+    if month in [12, 1, 2]:
+        season = 0
+    elif month in [3, 4, 5]:
+        season = 1
+    elif month in [6, 7, 8]:
+        season = 2
+    else:
+        season = 3
+    
+    patterns = austin_patterns[season] if is_imperial else london_patterns[season]
+    
+    days = []
     for i in range(3):
-        day = now.replace(day=now.day + i)
+        day = now + timedelta(days=i)
+        pattern = patterns[i]
         days.append({
             "day_name": day.strftime("%a").upper(),
-            "high": 75 if city["units"] == "imperial" else 24,
-            "low": 55 if city["units"] == "imperial" else 13,
-            "condition": "Clouds",
-            "icon": "clouds",
-            "description": "Cloudy",
+            "high": pattern["hi"],
+            "low": pattern["lo"],
+            "condition": pattern["desc"],
+            "icon": pattern["icon"],
+            "description": pattern["desc"],
         })
     
     return {
         "city": city["name"],
         "region": city["region"],
         "units": city["units"],
-        "unit_symbol": "°F" if city["units"] == "imperial" else "°C",
+        "unit_symbol": "°F" if is_imperial else "°C",
         "timestamp": now.isoformat(),
         "forecasts": days,
     }

@@ -18,7 +18,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from weather_api import fetch_forecast, fetch_nearby_weather
+from weather_api import fetch_forecast
 from video_renderer import generate_video
 
 OUTPUT_DIR = Path(__file__).parent / "output"
@@ -41,10 +41,9 @@ def generate_all_videos():
             
             # Fetch forecast data
             forecast = fetch_forecast(city_key)
-            nearby = fetch_nearby_weather(city_key)
             
-            # Generate video
-            output_path = generate_video(city_key, forecast, nearby)
+            # Generate video (3-day forecast only)
+            output_path = generate_video(city_key, forecast)
             generated.append(output_path)
             
         except Exception as e:

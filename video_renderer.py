@@ -308,8 +308,8 @@ def generate_map_frame(city_key: str, nearby: list, frame_num: int) -> Image.Ima
     return img
 
 
-def generate_video(city_key: str, forecast: dict, nearby: list):
-    """Generate the complete weather video."""
+def generate_video(city_key: str, forecast: dict, nearby: list = None):
+    """Generate the complete weather video - 20 seconds of 3-day forecast."""
     output_name = "ATXweather.mp4" if city_key == "austin" else "LDNweather.mp4"
     output_path = OUTPUT_DIR / output_name
     temp_dir = OUTPUT_DIR / f"temp_{city_key}"
@@ -317,42 +317,17 @@ def generate_video(city_key: str, forecast: dict, nearby: list):
     
     print(f"Generating {output_name}...")
     
-    # Generate forecast frame (held for 10 seconds = 300 frames)
+    # Generate forecast frame (held for full 20 seconds)
     forecast_img = generate_forecast_frame(forecast)
     forecast_path = temp_dir / "forecast.png"
     forecast_img.save(forecast_path)
     
-    # Generate map frames (10 seconds = 300 frames, but we use 10 unique frames)
-    map_frames = []
-    for i in range(10):
-        map_img = generate_map_frame(city_key, nearby, i)
-        frame_path = temp_dir / f"map_{i:03d}.png"
-        map_img.save(frame_path)
-        map_frames.append(frame_path)
-    
-    # Create video with ffmpeg
-    # Part 1: Forecast held for 10 seconds
-    # Part 2: Map animation for 10 seconds (cycle through 10 frames)
-    
-    # Create concat file
-    concat_file = temp_dir / "concat.txt"
-    with open(concat_file, "w") as f:
-        # Forecast: 10 seconds
-        f.write(f"file '{forecast_path.absolute()}'\n")
-        f.write("duration 10\n")
-        # Map frames: 1 second each
-        for frame in map_frames:
-            f.write(f"file '{frame.absolute()}'\n")
-            f.write("duration 1\n")
-        # Last frame needs to be listed again without duration
-        f.write(f"file '{map_frames[-1].absolute()}'\n")
-    
-    # Run ffmpeg
+    # Create video with ffmpeg - single image for 20 seconds
     cmd = [
         "ffmpeg", "-y",
-        "-f", "concat",
-        "-safe", "0",
-        "-i", str(concat_file),
+        "-loop", "1",
+        "-i", str(forecast_path),
+        "-t", str(DURATION),
         "-vf", f"fps={FPS},format=yuv420p",
         "-c:v", "libx264",
         "-preset", "medium",
