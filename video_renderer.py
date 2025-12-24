@@ -73,34 +73,51 @@ def draw_gradient_bg(draw: ImageDraw.Draw, width: int, height: int):
 
 
 def draw_header(draw: ImageDraw.Draw, city: str, region: str):
-    """Draw header with logo and city name."""
+    """Draw header with city name centered (logo moved to bottom)."""
     # Orange header bar
     draw.rectangle([0, 0, WIDTH, 50], fill=hex_to_rgb(COLORS["header_orange"]))
     
-    # "THE WEATHER CHANNEL" logo box
-    draw.rectangle([10, 8, 120, 42], fill=hex_to_rgb(COLORS["bg_dark"]), 
-                   outline=hex_to_rgb(COLORS["text_white"]), width=2)
-    
-    font_small = get_font(8)
     font_medium = get_font(12)
-    
-    draw.text((18, 10), "THE", fill=hex_to_rgb(COLORS["text_white"]), font=font_small)
-    draw.text((18, 18), "WEATHER", fill=hex_to_rgb(COLORS["text_white"]), font=font_small)
-    draw.text((18, 28), "CHANNEL", fill=hex_to_rgb(COLORS["text_white"]), font=font_small)
-    
-    # City name and region
     font_title = get_font(24)
-    draw.text((140, 8), f"{city} {region}", fill=hex_to_rgb(COLORS["text_white"]), font=font_title)
-    draw.text((140, 32), "Extended Forecast", fill=hex_to_rgb(COLORS["text_yellow"]), font=font_medium)
     
-    # Time and date
+    # City name and region - CENTERED
+    city_text = f"{city} {region}"
+    city_width = draw.textlength(city_text, font=font_title)
+    city_x = (WIDTH - city_width) // 2
+    draw.text((city_x, 8), city_text, fill=hex_to_rgb(COLORS["text_white"]), font=font_title)
+    
+    ext_text = "Extended Forecast"
+    ext_width = draw.textlength(ext_text, font=font_medium)
+    ext_x = (WIDTH - ext_width) // 2
+    draw.text((ext_x, 32), ext_text, fill=hex_to_rgb(COLORS["text_yellow"]), font=font_medium)
+    
+    # Time and date - moved left ~10% (from 520 to 456)
     now = datetime.now()
     time_str = now.strftime("%I:%M:%S %p")
     date_str = now.strftime("%a %b %d").upper()
     
     font_time = get_font(14)
-    draw.text((520, 10), time_str, fill=hex_to_rgb(COLORS["text_white"]), font=font_time)
-    draw.text((520, 28), date_str, fill=hex_to_rgb(COLORS["text_white"]), font=font_time)
+    draw.text((456, 10), time_str, fill=hex_to_rgb(COLORS["text_white"]), font=font_time)
+    draw.text((456, 28), date_str, fill=hex_to_rgb(COLORS["text_white"]), font=font_time)
+
+
+def draw_logo(draw: ImageDraw.Draw, y: int):
+    """Draw THE WEATHER CHANNEL logo centered at given y position."""
+    # Logo box centered
+    logo_width = 130
+    logo_x = (WIDTH - logo_width) // 2
+    
+    draw.rectangle([logo_x, y, logo_x + logo_width, y + 38], 
+                   fill=hex_to_rgb(COLORS["bg_dark"]), 
+                   outline=hex_to_rgb(COLORS["text_white"]), width=2)
+    
+    font_small = get_font(9)
+    
+    # Center each line of text in logo box
+    for i, text in enumerate(["THE", "WEATHER", "CHANNEL"]):
+        text_width = draw.textlength(text, font=font_small)
+        text_x = logo_x + (logo_width - text_width) // 2
+        draw.text((text_x, y + 4 + i * 10), text, fill=hex_to_rgb(COLORS["text_white"]), font=font_small)
 
 
 def draw_forecast_card(draw: ImageDraw.Draw, x: int, y: int, 
@@ -198,12 +215,13 @@ def draw_weather_icon(draw: ImageDraw.Draw, cx: int, cy: int, icon_type: str):
 
 
 def draw_bottom_bar(draw: ImageDraw.Draw, text: str):
-    """Draw bottom info bar."""
-    draw.rectangle([0, HEIGHT-35, WIDTH, HEIGHT], fill=hex_to_rgb(COLORS["bar_blue"]))
+    """Draw bottom info bar (moved up to make room for logo above)."""
+    bar_top = HEIGHT - 40  # Moved up 3% more (~14px)
+    draw.rectangle([0, bar_top, WIDTH, HEIGHT], fill=hex_to_rgb(COLORS["bar_blue"]))
     
-    font = get_font(16)
+    font = get_font(14)
     text_width = draw.textlength(text, font=font)
-    draw.text(((WIDTH - text_width) // 2, HEIGHT - 28), 
+    draw.text(((WIDTH - text_width) // 2, bar_top + 12), 
               text, fill=hex_to_rgb(COLORS["text_white"]), font=font)
 
 
@@ -235,6 +253,9 @@ def generate_forecast_frame(forecast: dict) -> Image.Image:
             day["low"],
             forecast["unit_symbol"]
         )
+    
+    # Logo centered between cards and bottom bar
+    draw_logo(draw, HEIGHT - 85)
     
     # Bottom bar
     draw_bottom_bar(draw, f"BAROMETRIC PRESSURE: 30.03 IN.")
