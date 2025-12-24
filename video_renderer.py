@@ -6,7 +6,14 @@ import os
 import subprocess
 from pathlib import Path
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from PIL import Image, ImageDraw, ImageFont
+
+# City timezones
+TIMEZONES = {
+    "Austin": "America/Chicago",
+    "London": "Europe/London",
+}
 
 # Paths
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -91,8 +98,10 @@ def draw_header(draw: ImageDraw.Draw, city: str, region: str):
     ext_x = (WIDTH - ext_width) // 2
     draw.text((ext_x, 32), ext_text, fill=hex_to_rgb(COLORS["text_yellow"]), font=font_medium)
     
-    # Time and date - moved left ~10% (from 520 to 456)
-    now = datetime.now()
+    # Time and date in LOCAL timezone for the city
+    tz_name = TIMEZONES.get(city, "UTC")
+    local_tz = ZoneInfo(tz_name)
+    now = datetime.now(local_tz)
     time_str = now.strftime("%I:%M:%S %p")
     date_str = now.strftime("%a %b %d").upper()
     
@@ -216,7 +225,7 @@ def draw_weather_icon(draw: ImageDraw.Draw, cx: int, cy: int, icon_type: str):
 
 def draw_bottom_bar(draw: ImageDraw.Draw, text: str):
     """Draw bottom info bar (moved up to make room for logo above)."""
-    bar_top = HEIGHT - 40  # Moved up 3% more (~14px)
+    bar_top = HEIGHT - 64  # Moved up another 5% (~24px)
     draw.rectangle([0, bar_top, WIDTH, HEIGHT], fill=hex_to_rgb(COLORS["bar_blue"]))
     
     font = get_font(14)
@@ -255,7 +264,7 @@ def generate_forecast_frame(forecast: dict) -> Image.Image:
         )
     
     # Logo centered between cards and bottom bar
-    draw_logo(draw, HEIGHT - 85)
+    draw_logo(draw, HEIGHT - 109)
     
     # Bottom bar
     draw_bottom_bar(draw, f"BAROMETRIC PRESSURE: 30.03 IN.")
