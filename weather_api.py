@@ -328,3 +328,59 @@ if __name__ == "__main__":
     for day in london["forecasts"]:
         print(f"  {day['day_name']}: {day['high']}/{day['low']}°C - {day['description']}")
 
+
+def fetch_current(city_key: str) -> dict:
+    """Fetch current conditions for the city's primary location.
+    Returns a small dict consumed by the NOW strip in the renderer.
+    """
+    city = CITIES[city_key]
+    cache_file = CACHE_DIR / f"{city_key}_current.json"
+    try:
+        url = "https://api.openweathermap.org/data/2.5/weather"
+        params = {
+            "lat": city["lat"],
+            "lon": city["lon"],
+            "appid": API_KEY,
+            "units": city["units"],
+        }
+        r = requests.get(url, params=params, timeout=10)
+        r.raise_for_status()
+        d = r.json()
+        cond = d["weather"][0]["main"]
+        out = {
+            "temp": round(d["main"]["temp"]),
+            "feels_like": round(d["main"]["feels_like"]),
+            "humidity": d["main"].get("humidity", 0),
+            "wind_speed": round(d.get("wind", {}).get("speed", 0)),
+            "condition": cond,
+            "icon": get_icon_name(cond),
+            "description": get_description(cond),
+            "unit_symbol": "F" if city["units"] == "imperial" else "C",
+            "wind_unit": "mph" if city["units"] == "imperial" else "m/s",
+        }
+        with open(cache_file, "w") as f:
+            json.dump(out, f)
+        return out
+    except Exception as e:
+        print(f"  ! current fetch failed for {city_key}: {e}")
+        if cache_file.exists():
+            with open(cache_file) as f:
+                return json.load(f)
+        # Last-resort fallback derived from forecast
+        try:
+            fc = fetch_forecast(city_key)
+            d0 = fc["forecasts"][0]
+            return {
+                "temp": (d0["high"] + d0["low"]) // 2,
+                "feels_like": (d0["high"] + d0["low"]) // 2,
+                "humidity": 50,
+                "wind_speed": 5,
+                "condition": d0["condition"],
+                "icon": d0["icon"],
+                "description": d0["description"],
+                "unit_symbol": fc["unit_symbol"].lstrip("°"),
+                "wind_unit": "mph" if city["units"] == "imperial" else "m/s",
+            }
+        except Exception:
+            return None
+

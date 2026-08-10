@@ -79,6 +79,37 @@ def draw_gradient_bg(draw: ImageDraw.Draw, width: int, height: int):
         draw.line([(0, y), (width, y)], fill=(r, g, b))
 
 
+# Rig-generated retro backgrounds (see assets/backgrounds/), keyed by
+# OpenWeatherMap "main" condition. Generated once on the AI rig, reused
+# every render — the 15-min NOW cycle costs no GPU time.
+BG_DIR = ASSETS_DIR / "backgrounds"
+CONDITION_BG = {
+    "Clear": "sunny",
+    "Clouds": "cloudy", "Mist": "cloudy", "Fog": "cloudy", "Haze": "cloudy",
+    "Rain": "rainy", "Drizzle": "rainy",
+    "Thunderstorm": "storm",
+    "Snow": "snow",
+}
+
+
+def draw_background(img: Image.Image, condition: str = None, key: str = None):
+    """Paste the retro background for this condition (or explicit key, e.g.
+    "aqi") onto img; fall back to the classic gradient if missing."""
+    if key is None:
+        key = CONDITION_BG.get(condition or "", "navy")
+    path = BG_DIR / f"{key}.png"
+    if not path.exists():
+        path = BG_DIR / "navy.png"
+    if path.exists():
+        try:
+            bg = Image.open(path).convert("RGB").resize(img.size, Image.LANCZOS)
+            img.paste(bg, (0, 0))
+            return
+        except Exception:
+            pass
+    draw_gradient_bg(ImageDraw.Draw(img), img.width, img.height)
+
+
 def draw_header(draw: ImageDraw.Draw, city: str, region: str):
     """Draw header with city name centered (logo moved to bottom)."""
     # Orange header bar
@@ -168,8 +199,32 @@ def draw_forecast_card(draw: ImageDraw.Draw, x: int, y: int,
     draw.text((x + 100, y + 210), str(high), fill=hex_to_rgb(COLORS["text_white"]), font=font_temp)
 
 
-def draw_weather_icon(draw: ImageDraw.Draw, cx: int, cy: int, icon_type: str):
-    """Draw a simple weather icon centered at (cx, cy)."""
+# Rig-generated 90s icon assets (RGBA, transparent bg), keyed by icon name.
+# Missing asset -> the original vector drawing below still runs.
+ICONS_DIR = ASSETS_DIR / "icons"
+_ICON_CACHE = {}
+
+
+def _icon_asset(icon_type: str):
+    if icon_type not in _ICON_CACHE:
+        p = ICONS_DIR / f"{icon_type}.png"
+        try:
+            _ICON_CACHE[icon_type] = Image.open(p).convert("RGBA") if p.exists() else None
+        except Exception:
+            _ICON_CACHE[icon_type] = None
+    return _ICON_CACHE[icon_type]
+
+
+def draw_weather_icon(draw: ImageDraw.Draw, cx: int, cy: int, icon_type: str,
+                      size: int = 85):
+    """Weather icon centered at (cx, cy): rig-generated PNG if present,
+    else the original vector shapes."""
+    img = getattr(draw, "_image", None)
+    asset = _icon_asset(icon_type)
+    if img is not None and asset is not None:
+        icon = asset.resize((size, size), Image.LANCZOS)
+        img.paste(icon, (cx - size // 2, cy - size // 2), icon)
+        return
     if icon_type == "sun":
         # Yellow sun
         draw.ellipse([cx-25, cy-25, cx+25, cy+25], fill="#ffd54f")
@@ -234,41 +289,106 @@ def draw_bottom_bar(draw: ImageDraw.Draw, text: str):
               text, fill=hex_to_rgb(COLORS["text_white"]), font=font)
 
 
-def generate_forecast_frame(forecast: dict) -> Image.Image:
-    """Generate the forecast cards frame."""
+def draw_now_strip(draw, current):
+    """Horizontal NOW strip: big temp + icon + feels-like + wind/humidity.
+    Sits between the orange header (y=0-50) and the forecast cards (y=120-360).
+    """
+    if not current:
+        return
+    strip_top = 50
+    strip_bottom = 110
+    # Background panel
+    draw.rectangle([0, strip_top, WIDTH, strip_bottom],
+                   fill=hex_to_rgb(COLORS["bar_blue"]))
+    # Yellow accent band on left
+    draw.rectangle([0, strip_top, 6, strip_bottom],
+                   fill=hex_to_rgb(COLORS["text_yellow"]))
+
+    f_label = get_font(11)
+    f_temp = get_font(38)
+    f_desc = get_font(13)
+    f_stat = get_font(13)
+
+    # "NOW" label
+    draw.text((14, strip_top + 6), "NOW",
+              fill=hex_to_rgb(COLORS["text_yellow"]), font=f_label)
+
+    # Big temp (e.g. 78°)
+    temp_str = f"{current['temp']}°"
+    draw.text((14, strip_top + 18), temp_str,
+              fill=hex_to_rgb(COLORS["text_white"]), font=f_temp)
+
+    # Icon a bit to the right of temp
+    icon_x = 130
+    icon_y = strip_top + 30
+    draw_weather_icon(draw, icon_x, icon_y, current["icon"])
+
+    # Description (e.g. "Sunny") under the icon
+    desc = current["description"][:14]
+    dw = draw.textlength(desc, font=f_desc)
+    draw.text((icon_x - dw // 2, strip_top + 50), desc,
+              fill=hex_to_rgb(COLORS["text_white"]), font=f_desc)
+
+    # Right side: stacked stats (FEELS / WIND / HUMIDITY)
+    stat_x = 220
+    feels = f"FEELS LIKE  {current['feels_like']}°"
+    wind = f"WIND  {current['wind_speed']} {current['wind_unit']}"
+    hum = f"HUMIDITY  {current['humidity']}%"
+    draw.text((stat_x, strip_top + 8), feels,
+              fill=hex_to_rgb(COLORS["text_white"]), font=f_stat)
+    draw.text((stat_x, strip_top + 24), wind,
+              fill=hex_to_rgb(COLORS["text_white"]), font=f_stat)
+    draw.text((stat_x, strip_top + 40), hum,
+              fill=hex_to_rgb(COLORS["text_white"]), font=f_stat)
+
+
+def generate_forecast_frame(forecast: dict, current: dict = None) -> Image.Image:
+    """Generate the forecast cards frame, optionally with a NOW strip on top."""
     img = Image.new("RGB", (WIDTH, HEIGHT))
     draw = ImageDraw.Draw(img)
-    
-    # Background
-    draw_gradient_bg(draw, WIDTH, HEIGHT)
-    
+
+    # Background — keyed to today's condition, gradient fallback
+    days = forecast.get("forecasts") or []
+    cond = days[0].get("condition") if days else None
+    draw_background(img, cond)
+
     # Header
     draw_header(draw, forecast["city"], forecast["region"])
-    
+
+    # NOW strip (Austin only — caller passes current=None to skip)
+    if current:
+        draw_now_strip(draw, current)
+        card_y = 120
+    else:
+        card_y = 70
+
     # Three forecast cards
     card_start_x = 30
-    card_y = 70
     card_spacing = 200
-    
+
     for i, day in enumerate(forecast["forecasts"][:3]):
         draw_forecast_card(
-            draw, 
-            card_start_x + i * card_spacing, 
+            draw,
+            card_start_x + i * card_spacing,
             card_y,
             day["day_name"],
             day["icon"],
             day["description"],
             day["high"],
             day["low"],
-            forecast["unit_symbol"]
+            forecast["unit_symbol"],
         )
-    
+
     # Logo centered between cards and bottom bar
     draw_logo(draw, HEIGHT - 109)
-    
+
     # Bottom bar
-    draw_bottom_bar(draw, f"BAROMETRIC PRESSURE: 30.03 IN.")
-    
+    if current:
+        bar_text = f"UPDATED {datetime.now(ZoneInfo(TIMEZONES.get(forecast['city'], 'UTC'))).strftime('%I:%M %p').lstrip('0')}"
+    else:
+        bar_text = "BAROMETRIC PRESSURE: 30.03 IN."
+    draw_bottom_bar(draw, bar_text)
+
     return img
 
 
@@ -338,17 +458,17 @@ def generate_map_frame(city_key: str, nearby: list, frame_num: int) -> Image.Ima
     return img
 
 
-def generate_video(city_key: str, forecast: dict, nearby: list = None):
+def generate_video(city_key: str, forecast: dict, nearby: list = None, current: dict = None):
     """Generate the complete weather video - 20 seconds of 3-day forecast."""
     output_name = "ATXweather.mp4" if city_key == "austin" else "LDNweather.mp4"
     output_path = OUTPUT_DIR / output_name
     temp_dir = OUTPUT_DIR / f"temp_{city_key}"
     temp_dir.mkdir(exist_ok=True)
-    
+
     print(f"Generating {output_name}...")
-    
+
     # Generate forecast frame (held for full 20 seconds)
-    forecast_img = generate_forecast_frame(forecast)
+    forecast_img = generate_forecast_frame(forecast, current=current)
     forecast_path = temp_dir / "forecast.png"
     forecast_img.save(forecast_path)
     
@@ -362,11 +482,12 @@ def generate_video(city_key: str, forecast: dict, nearby: list = None):
         "-c:v", "libx264",
         "-preset", "medium",
         "-crf", "23",
-        str(output_path)
+        str(output_path) + ".tmp.mp4"
     ]
     
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        os.replace(str(output_path) + ".tmp.mp4", output_path)  # atomic: Pi can pull any time
         print(f"✓ Generated {output_path}")
     except subprocess.CalledProcessError as e:
         print(f"✗ ffmpeg error: {e.stderr}")

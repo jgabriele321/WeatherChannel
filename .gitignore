@@ -14,3 +14,9 @@ output/*.mp4
 # OS
 .DS_Store
 
+venv/
+cache/
+cron.log
+*.bak*
+__pycache__/
+output/temp_*/
