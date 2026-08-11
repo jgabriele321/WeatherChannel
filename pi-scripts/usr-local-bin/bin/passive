@@ -1,0 +1,32 @@
+#!/bin/bash
+# Passive mode controller.
+FLAG=/tmp/passive_active
+
+case "${1:-status}" in
+    on)
+        if [ -f "$FLAG" ] && pgrep -f passive-loop >/dev/null; then
+            echo "Passive already on"; exit 0
+        fi
+        # Clear the broadcast-off flag so reload-after-update resumes
+        sudo rm -f /tmp/broadcast_off 2>/dev/null
+        sudo touch "$FLAG"
+        sudo bash -c "nohup /usr/local/bin/passive-loop >/dev/null 2>&1 &"
+        echo "Passive ON  (cycling 7 screens, 8.5 min each)"
+        ;;
+    off)
+        sudo rm -f "$FLAG"
+        sudo pkill -f passive-loop 2>/dev/null
+        echo "Passive OFF"
+        ;;
+    status)
+        if [ -f "$FLAG" ] && pgrep -f passive-loop >/dev/null; then
+            echo "Passive: ON  (cycling)"
+        else
+            echo "Passive: off"
+        fi
+        ;;
+    *)
+        echo "Usage: passive on | off | status" >&2
+        exit 1
+        ;;
+esac

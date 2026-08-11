@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# passive-disable hook
+[ -z "${PASSIVE:-}" ] && [ -f /tmp/passive_active ] && { sudo rm -f /tmp/passive_active 2>/dev/null; sudo pkill -f passive-loop 2>/dev/null; }
+
+CHANNEL_FILE=/tmp/current_channel
+VIDEO_DIR=/home/pi/simpsonstv/videos
+
+list_channels() {
+    ls "$VIDEO_DIR" | sed -E "s/[ _-]+S[0-9]+.*\$//" | sort -u
+}
+
+current() {
+    if [ -f "$CHANNEL_FILE" ]; then cat "$CHANNEL_FILE"; else echo "ALL"; fi
+}
+
+
+flash() {
+    # Background static layer is always running (bgstatic.service);
+    # just kill the current episode and player.py spawns the new one.
+    if ! systemctl is-active --quiet tvplayer.service; then
+        return
+    fi
+    sudo pkill -9 -f 'simpsonstv/(videos|commercials)/' 2>/dev/null
+}
+
+case "$1" in
+    "")
+        echo "Current channel: $(current)"
+        echo
+        echo "Available:"
+        list_channels | sed "s/^/  /"
+        echo "  ALL"
+        echo
+        echo "Usage:"
+        echo "  channel <name>   switch (partial match, case-insensitive)"
+        echo "  channel all      rotate through everything"
+        echo "  channel next     skip current video"
+        echo "  channel list     bare list of channels"
+        ;;
+    next)
+        flash
+        echo "Skipping..."
+        ;;
+    list)
+        list_channels
+        echo "ALL"
+        ;;
+    *)
+        target_lc=$(echo "$1" | tr "[:upper:]" "[:lower:]")
+        if [ "$target_lc" = "all" ]; then
+            match="ALL"
+        else
+            match=$(list_channels | grep -iE "^$1" | head -1)
+        fi
+        if [ -z "$match" ]; then
+            echo "No channel matches \"$1\". Available:"
+            list_channels
+            echo "ALL"
+            exit 1
+        fi
+        echo "$match" > "$CHANNEL_FILE"
+        echo "Switched to: $match"
+        flash
+        ;;
+esac

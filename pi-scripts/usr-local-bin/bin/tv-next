@@ -1,0 +1,13 @@
+#!/bin/bash
+# Context-aware "next":
+#   - In passive → advance to next passive screen (also exits passive)
+#   - In TV mode → next episode
+#   - In static mode → next static screen
+# Bound to remote key K.
+if [ -f /tmp/passive_active ]; then
+    /usr/local/bin/static next
+elif systemctl is-active --quiet tvplayer.service; then
+    /usr/local/bin/channel next
+else
+    /usr/local/bin/static next
+fi

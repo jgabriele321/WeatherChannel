@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# passive-disable hook
+[ -z "${PASSIVE:-}" ] && [ -f /tmp/passive_active ] && { sudo rm -f /tmp/passive_active 2>/dev/null; sudo pkill -f passive-loop 2>/dev/null; }
+
+# Bring the screen back (counterpart to 'off').
+vcgencmd display_power 1 >/dev/null 2>&1
+sudo systemctl start bgstatic.service
+sleep 1
+sudo systemctl start tvplayer.service
+echo "Screen on."

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# passive-disable hook
+[ -z "${PASSIVE:-}" ] && [ -f /tmp/passive_active ] && { sudo rm -f /tmp/passive_active 2>/dev/null; sudo pkill -f passive-loop 2>/dev/null; }
+
+# Toggle pause/resume on the active omxplayer.
+sudo /usr/local/bin/dbuscontrol.sh pause >/dev/null 2>&1 && echo "Toggled pause"

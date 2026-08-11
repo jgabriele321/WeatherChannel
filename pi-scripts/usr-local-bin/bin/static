@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# passive-disable hook
+[ -z "${PASSIVE:-}" ] && [ -f /tmp/passive_active ] && { sudo rm -f /tmp/passive_active 2>/dev/null; sudo pkill -f passive-loop 2>/dev/null; }
+
+STATE_FILE=/tmp/static_screen_state
+
+is_tv() { systemctl is-active --quiet tvplayer.service; }
+current() { [ -f "$STATE_FILE" ] && cat "$STATE_FILE" || echo "0"; }
+
+label() {
+    case "$1" in
+        0) echo "NO SIGNAL" ;;
+        1) echo "STATIC NOISE" ;;
+        2) echo "Austin Weather" ;;
+        3) echo "London Weather" ;;
+        4) echo "Bats" ;;
+        5) echo "Air Quality" ;;
+        6) echo "Holidays" ;;
+        7) echo "Right Now" ;;
+    esac
+}
+file_for() {
+    case "$1" in
+        0) echo "no_signal.mp4" ;;
+        1) echo "static_noise.mp4" ;;
+        2) echo "ATXweather.mp4" ;;
+        3) echo "LDNweather.mp4" ;;
+        4) echo "BATSweather.mp4" ;;
+        5) echo "AQIweather.mp4" ;;
+        6) echo "HOLIDAYchannel.mp4" ;;
+        7) echo "NOWweather.mp4" ;;
+    esac
+}
+
+show() {
+    local n="$1"
+    sudo pkill -9 -f 'simpsonstv/(no_signal|ATXweather|LDNweather|BATSweather|AQIweather|HOLIDAYchannel|NOWweather|BROADCAST_END)' 2>/dev/null
+    sudo pkill -9 -f videos/ 2>/dev/null
+    sleep 0.3
+    echo "$n" > "$STATE_FILE"
+    if [ "$n" = "1" ]; then
+        # noise IS the background layer; no foreground player needed
+        echo "Now showing: $(label $n)  (background only — bgstatic.service)"
+    else
+        sudo bash -c "nohup omxplayer --layer 10 --loop --no-osd /home/pi/simpsonstv/$(file_for $n) > /dev/null 2>&1 &"
+        echo "Now showing: $(label $n)"
+    fi
+}
+
+case "$1" in
+    "")
+        echo "Current static screen: $(label $(current))"
+        echo
+        echo "Usage:"
+        echo "  static signal    NO SIGNAL color bars"
+        echo "  static noise     static noise"
+        echo "  static atx       Austin weather"
+        echo "  static ldn       London weather"
+        echo "  static bats      Austin bats (Congress Bridge)"
+        echo "  static aqi       Air quality + pollen"
+        echo "  static holiday   Today's national day"
+        echo "  static next      cycle to next screen"
+        if is_tv; then
+            echo
+            echo "(Currently in TV mode — these will switch to STATIC.)"
+        fi
+        exit 0 ;;
+    signal|no-signal|nosignal) target=0 ;;
+    noise) target=1 ;;
+    atx|austin) target=2 ;;
+    ldn|london) target=3 ;;
+    bats|bat) target=4 ;;
+    aqi|air|pollen|allergy) target=5 ;;
+    holiday|today|day) target=6 ;;
+    now|current|live) target=7 ;;
+    next) target=$(( ($(current) + 1) % 8 )) ;;
+    *)
+        echo "Unknown screen: $1. Try: signal | noise | atx | ldn | bats | aqi | holiday | now | next"
+        exit 1 ;;
+esac
+
+if is_tv; then
+    sudo systemctl stop tvplayer.service
+    sleep 0.5
+fi
+show "$target"

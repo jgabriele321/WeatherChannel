@@ -1,0 +1,7 @@
+#!/bin/bash
+sudo bash -c 'export DBUS_SESSION_BUS_ADDRESS=$(cat /tmp/omxplayerdbus.root 2>/dev/null); \
+    dbus-send --print-reply --session \
+    --dest=org.mpris.MediaPlayer2.omxplayer \
+    /org/mpris/MediaPlayer2 \
+    org.freedesktop.DBus.Properties.Get \
+    string:org.mpris.MediaPlayer2.Player string:Volume' 2>/dev/null | tail -1

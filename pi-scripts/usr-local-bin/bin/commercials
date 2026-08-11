@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# passive-disable hook
+[ -z "${PASSIVE:-}" ] && [ -f /tmp/passive_active ] && { sudo rm -f /tmp/passive_active 2>/dev/null; sudo pkill -f passive-loop 2>/dev/null; }
+
+INTERVAL_FILE=/home/pi/simpsonstv/commercial_interval
+COMM_DIR=/home/pi/simpsonstv/commercials
+
+current_interval() { cat "$INTERVAL_FILE" 2>/dev/null || echo 1; }
+count_clips() { [ -d "$COMM_DIR" ] && ls "$COMM_DIR" 2>/dev/null | wc -l || echo 0; }
+
+case "${1:-status}" in
+    status|"")
+        echo "Library:  $(count_clips) clips in $COMM_DIR"
+        cur=$(current_interval)
+        if [ "$cur" = "0" ]; then echo "Interval: OFF"
+        else echo "Interval: every $cur episode(s)"; fi
+        echo
+        echo "Usage: commercials [interval N | on | off | list | status]"
+        ;;
+    interval)
+        n="${2:-1}"
+        if ! [[ "$n" =~ ^[0-9]+$ ]]; then echo "must be integer"; exit 1; fi
+        echo "$n" | sudo tee "$INTERVAL_FILE" > /dev/null
+        [ "$n" = "0" ] && echo "Commercials OFF" || echo "Commercials: every $n episode(s)"
+        ;;
+    off) echo 0 | sudo tee "$INTERVAL_FILE" > /dev/null; echo "Commercials OFF" ;;
+    on)  echo 1 | sudo tee "$INTERVAL_FILE" > /dev/null; echo "Commercials ON (every 1 episode)" ;;
+    list) ls "$COMM_DIR" 2>/dev/null | head -50 ;;
+    *) echo "Unknown: $1" >&2; exit 1 ;;
+esac

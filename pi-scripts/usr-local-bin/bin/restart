@@ -1,0 +1,5 @@
+#!/bin/bash
+# Reboot the TV. Comes back automatically in ~90 seconds.
+echo "Rebooting in 3 seconds (Ctrl+C to abort)..."
+sleep 3
+sudo reboot

@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# passive-disable hook
+[ -z "${PASSIVE:-}" ] && [ -f /tmp/passive_active ] && { sudo rm -f /tmp/passive_active 2>/dev/null; sudo pkill -f passive-loop 2>/dev/null; }
+
+# Late-night broadcast control.
+# `broadcast off`    — kills tvplayer + plays BROADCAST_END.mp4 looped.
+# `broadcast on`     — switches into bats (the morning bat refresh).
+# `broadcast status` — current state.
+STATE=/tmp/broadcast_off
+END_FILE=/home/pi/simpsonstv/BROADCAST_END.mp4
+
+case "${1:-status}" in
+    off)
+        sudo systemctl stop tvplayer.service
+        sleep 0.5
+        sudo pkill -9 -f 'simpsonstv/(no_signal|ATXweather|LDNweather|BATSweather|AQIweather|HOLIDAYchannel|NOWweather|BROADCAST_END)' 2>/dev/null
+        sudo pkill -9 -f videos/ 2>/dev/null
+        sleep 0.5
+        sudo bash -c "nohup omxplayer --layer 10 --loop --no-osd $END_FILE > /dev/null 2>&1 &"
+        touch "$STATE"
+        echo "Broadcast day ended."
+        ;;
+    on)
+        rm -f "$STATE"
+        /usr/local/bin/passive on
+        echo "Broadcast day resumed (passive mode cycling)."
+        ;;
+    status)
+        if [ -f "$STATE" ]; then echo "OFF (broadcast day ended)"
+        else echo "ON"; fi
+        ;;
+    *)
+        echo "Usage: broadcast off | broadcast on | broadcast status" >&2
+        exit 1
+        ;;
+esac

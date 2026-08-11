@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+import socket, sys
+MAC = 'b8:85:84:b8:4a:f5'  # home server eno1
+mac_bytes = bytes.fromhex(MAC.replace(':', ''))
+packet = b'\xff' * 6 + mac_bytes * 16
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+s.sendto(packet, ('255.255.255.255', 9))
+s.close()
+print(f'Magic packet sent to {MAC} (LAN broadcast 255.255.255.255:9)')
+print('Wait ~30 seconds, then SSH the home server.')

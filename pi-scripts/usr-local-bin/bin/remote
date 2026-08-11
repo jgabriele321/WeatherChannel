@@ -1,0 +1,89 @@
+#!/bin/bash
+# RetroTV interactive remote
+
+C_TITLE="\033[1;36m"
+C_CUR="\033[1;33m"
+C_DIM="\033[2m"
+C_PROMPT="\033[1;32m"
+C_R="\033[0m"
+
+current_state() {
+    if systemctl is-active --quiet tvplayer.service; then
+        local ch=$(cat /tmp/current_channel 2>/dev/null || echo "ALL")
+        echo "TV mode  •  channel: $ch"
+    else
+        local s=$(cat /tmp/static_screen_state 2>/dev/null || echo 0)
+        local label
+        case "$s" in
+            0) label="NO SIGNAL" ;;
+            1) label="STATIC NOISE" ;;
+            2) label="Austin Weather" ;;
+            3) label="London Weather" ;;
+            4) label="Bats" ;;
+            5) label="Air Quality" ;;
+            6) label="Holidays" ;;
+            7) label="Right Now" ;;
+        esac
+        echo "STATIC mode  •  $label"
+    fi
+}
+
+show_menu() {
+    clear
+    echo -e "${C_TITLE}╔════════════════════════════════════╗${C_R}"
+    echo -e "${C_TITLE}║         RetroTV  Remote            ║${C_R}"
+    echo -e "${C_TITLE}╚════════════════════════════════════╝${C_R}"
+    echo -e "  Now: ${C_CUR}$(current_state)${C_R}"
+    echo
+    echo -e "  ${C_DIM}CHANNELS${C_R}    doug  •  hey  •  pokemon  •  rugrats  •  spongebob  •  all"
+    echo -e "  ${C_DIM}STATIC${C_R}      static  •  signal  •  noise  •  atx  •  ldn  •  bats  •  aqi  •  holiday  •  now"
+    echo -e "  ${C_DIM}MODE${C_R}        tv"
+    echo -e "  ${C_DIM}ACTIONS${C_R}     next  •  pause  •  mute  •  broadcast  •  off  •  on  •  q  (quit)"
+    echo
+}
+
+route() {
+    local lc
+    lc=$(echo "$1" | tr "[:upper:]" "[:lower:]" | xargs)
+    case "$lc" in
+        ""|q|quit|exit) return 99 ;;
+        next|skip)
+            if systemctl is-active --quiet tvplayer.service; then channel next
+            else static next; fi ;;
+        tv|play) mode tv ;;
+        static) mode static ;;
+        signal|nosignal|"no signal"|bars) static signal ;;
+        noise) static noise ;;
+        atx|austin*) static atx ;;
+        ldn|london*) static ldn ;;
+        bat*) static bats ;;
+        aqi|air|pollen*|allerg*) static aqi ;;
+        holiday|today|day) static holiday ;;
+        now|current|live) static now ;;
+        pause|p) pause ;;
+        mute|unmute|m) mute ;;
+        off|screen-off) off ;;
+        on|wake-screen) on ;;
+        broadcast|night|eod) broadcast off ;;
+        wake|morning|on) broadcast on ;;
+        all) channel all ;;
+        doug*) channel doug ;;
+        hey*|arnold*) channel hey ;;
+        poke*) channel pokemon ;;
+        rug*) channel rugrats ;;
+        sponge*|bob*) channel spongebob ;;
+        *) echo "Unknown: $1"; sleep 1 ;;
+    esac
+}
+
+while true; do
+    show_menu
+    echo -ne "${C_PROMPT}> ${C_R}"
+    read -r input
+    route "$input"
+    rc=$?
+    if [ "$rc" = "99" ]; then break; fi
+    sleep 0.6
+done
+clear
+echo "Remote closed."

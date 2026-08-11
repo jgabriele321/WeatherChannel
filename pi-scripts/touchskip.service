@@ -1,0 +1,11 @@
+[Unit]
+Description=touchskip
+After=network.target
+
+[Service]
+WorkingDirectory=/home/pi/simpsonstv/
+ExecStart=/usr/bin/python3 /home/pi/simpsonstv/touchskip.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

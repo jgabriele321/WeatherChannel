@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# passive-disable hook
+[ -z "${PASSIVE:-}" ] && [ -f /tmp/passive_active ] && { sudo rm -f /tmp/passive_active 2>/dev/null; sudo pkill -f passive-loop 2>/dev/null; }
+
+STATE_FILE=/tmp/static_screen_state
+
+is_tv() { systemctl is-active --quiet tvplayer.service; }
+
+case "$1" in
+    "")
+        if is_tv; then echo "Current mode: TV"
+        else echo "Current mode: STATIC"; fi
+        echo
+        echo "Usage: mode tv | mode static"
+        ;;
+    tv)
+        sudo pkill -9 -f 'simpsonstv/(no_signal|ATXweather|LDNweather|BATSweather|AQIweather|HOLIDAYchannel|NOWweather|BROADCAST_END)' 2>/dev/null
+        sudo pkill -9 -f videos/ 2>/dev/null
+        sleep 0.5
+        sudo systemctl start tvplayer.service
+        echo "Switched to TV mode"
+        ;;
+    static)
+        sudo systemctl stop tvplayer.service
+        sleep 0.5
+        sudo pkill -9 -f 'simpsonstv/(no_signal|ATXweather|LDNweather|BATSweather|AQIweather|HOLIDAYchannel|NOWweather|BROADCAST_END)' 2>/dev/null
+        sudo pkill -9 -f videos/ 2>/dev/null
+        sleep 0.5
+        echo "0" > "$STATE_FILE"
+        sudo bash -c "nohup omxplayer --layer 10 --loop --no-osd /home/pi/simpsonstv/no_signal.mp4 > /dev/null 2>&1 &"
+        echo "Switched to STATIC mode (NO SIGNAL)"
+        ;;
+    *)
+        echo "Unknown: $1. Use: mode tv | mode static"
+        exit 1 ;;
+esac

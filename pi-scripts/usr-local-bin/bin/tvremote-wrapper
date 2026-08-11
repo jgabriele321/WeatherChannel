@@ -1,0 +1,47 @@
+#!/bin/bash
+# Forced command for the web-remote SSH key (tvremote-web).
+# SSH_ORIGINAL_COMMAND must be an exact whitelisted token.
+# Anything else exits 1. No shell interpolation of user input, ever.
+set -u
+tok="${SSH_ORIGINAL_COMMAND:-}"
+
+case "$tok" in
+    status)
+        m="STATIC"
+        systemctl is-active --quiet tvplayer.service && m="TV"
+        ch=$(cat /tmp/current_channel 2>/dev/null || echo "ALL")
+        sc=$(cat /tmp/static_screen_state 2>/dev/null || echo "0")
+        p="off"; [ -f /tmp/passive_active ] && p="on"
+        b="on"; [ -f /tmp/broadcast_off ] && b="off"
+        mu=$(/usr/local/bin/mute status 2>/dev/null || echo "unknown")
+        echo "mode=$m channel=$ch screen=$sc passive=$p broadcast=$b mute=$mu"
+        ;;
+    mode_tv)        /usr/local/bin/mode tv ;;
+    mode_static)    /usr/local/bin/mode static ;;
+    ch_doug)        /usr/local/bin/channel doug ;;
+    ch_hey)         /usr/local/bin/channel hey ;;
+    ch_pokemon)     /usr/local/bin/channel pokemon ;;
+    ch_rugrats)     /usr/local/bin/channel rugrats ;;
+    ch_spongebob)   /usr/local/bin/channel spongebob ;;
+    ch_all)         /usr/local/bin/channel all ;;
+    ch_next)        /usr/local/bin/channel next ;;
+    pause)          /usr/local/bin/pause ;;
+    mute)           /usr/local/bin/mute ;;
+    sc_signal)      /usr/local/bin/static signal ;;
+    sc_noise)       /usr/local/bin/static noise ;;
+    sc_atx)         /usr/local/bin/static atx ;;
+    sc_ldn)         /usr/local/bin/static ldn ;;
+    sc_bats)        /usr/local/bin/static bats ;;
+    sc_aqi)         /usr/local/bin/static aqi ;;
+    sc_holiday)     /usr/local/bin/static holiday ;;
+    sc_now)         /usr/local/bin/static now ;;
+    sc_next)        /usr/local/bin/static next ;;
+    passive_on)     /usr/local/bin/passive on ;;
+    passive_off)    /usr/local/bin/passive off ;;
+    broadcast_off)  /usr/local/bin/broadcast off ;;
+    broadcast_on)   /usr/local/bin/broadcast on ;;
+    *)
+        echo "denied" >&2
+        exit 1
+        ;;
+esac

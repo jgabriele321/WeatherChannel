@@ -1,0 +1,7 @@
+#!/bin/bash
+# EMERGENCY ONLY: physically powers down the Pi.
+# Pi will need to be unplugged and replugged to come back.
+echo "*** POWER OFF (Pi will go DARK and need physical replug) ***"
+read -p "Type YES to confirm: " ans
+if [ "$ans" != "YES" ]; then echo "Aborted."; exit 1; fi
+sudo poweroff

@@ -1,0 +1,10 @@
+#!/bin/bash
+# Toggle between passive mode and TV mode.
+# Bound to remote key J via Flirc → Android TV → ssh.
+if [ -f /tmp/passive_active ]; then
+    # Currently in passive → exit and start TV
+    /usr/local/bin/mode tv
+else
+    # Not in passive → enter passive
+    /usr/local/bin/passive on
+fi

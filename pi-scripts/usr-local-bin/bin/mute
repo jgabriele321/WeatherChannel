@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# passive-disable hook
+[ -z "${PASSIVE:-}" ] && [ -f /tmp/passive_active ] && { sudo rm -f /tmp/passive_active 2>/dev/null; sudo pkill -f passive-loop 2>/dev/null; }
+
+# Toggle mute, or with `mute apply` re-apply current saved state to the
+# running omxplayer (used after channel switches so mute survives).
+STATE=/tmp/muted
+DBUS_FILE=/tmp/omxplayerdbus.root
+
+set_volume() {
+    sudo bash -c "export DBUS_SESSION_BUS_ADDRESS=\$(cat $DBUS_FILE 2>/dev/null); \
+        dbus-send --print-reply --session \
+        --dest=org.mpris.MediaPlayer2.omxplayer \
+        /org/mpris/MediaPlayer2 \
+        org.freedesktop.DBus.Properties.Set \
+        string:org.mpris.MediaPlayer2.Player string:Volume variant:double:$1" \
+        >/dev/null 2>&1
+}
+
+case "${1:-toggle}" in
+    apply)
+        # Idempotent: just re-assert the current saved state on whatever
+        # omxplayer is running. Silent.
+        if [ -f "$STATE" ]; then set_volume 0.0; else set_volume 1.0; fi
+        ;;
+    toggle|"")
+        if [ -f "$STATE" ]; then
+            set_volume 1.0 && rm -f "$STATE" && echo "Unmuted"
+        else
+            set_volume 0.0 && touch "$STATE" && echo "Muted"
+        fi
+        ;;
+    status)
+        if [ -f "$STATE" ]; then echo "muted"; else echo "unmuted"; fi
+        ;;
+    *)
+        echo "Usage: mute | mute apply | mute status" >&2; exit 1
+        ;;
+esac
