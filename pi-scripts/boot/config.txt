@@ -78,6 +78,12 @@ dtoverlay=waveshare-28dpi-3b
 dtoverlay=waveshare-28dpi-4b
 display_rotate=1
 
+# Backlight enable for the Waveshare DPI panel (GPIO18, active-high).
+# Without this the panel stays dark after the firmware splash: the
+# audremap overlay claims GPIO18 for PWM audio and steals it from the
+# gpio-backlight driver declared in the waveshare overlay.
+gpio=18=op,dh
+
 dtoverlay=dwc2
 
 dtparam=audio=on

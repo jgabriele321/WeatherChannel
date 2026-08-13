@@ -1,0 +1,27 @@
+#!/bin/sh -e
+#
+# rc.local — retrotv
+#
+# Print the IP address
+_IP=$(hostname -I) || true
+if [ "$_IP" ]; then
+  printf "My IP address is %s\n" "$_IP"
+fi
+
+# Wifi power save OFF: the Pi Zero W default throttles throughput to ~0.7MB/s
+# and causes periodic stalls/disconnects during large transfers.
+iwconfig wlan0 power off 2>/dev/null || true
+
+# --- Waveshare DPI panel backlight ---
+# GPIO18 is the panel's backlight enable (see gpio-backlight node in
+# waveshare-28dpi overlay). The panel latches on a LOW->HIGH EDGE after
+# power-up; simply holding it high from config.txt is NOT enough, the
+# screen stays dark. Pulse it here, after boot.
+raspi-gpio set 18 op dl
+sleep 1
+raspi-gpio set 18 op dh
+
+# PWM audio out on GPIO19 (mono; GPIO18 is spoken for by the backlight)
+raspi-gpio set 19 op a5
+
+exit 0

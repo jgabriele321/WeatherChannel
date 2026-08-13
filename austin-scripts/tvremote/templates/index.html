@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>RetroTV Remote</title>
+<style>
+  :root {
+    --body: #232323;
+    --body-hi: #2e2e2e;
+    --btn: #3a3a3a;
+    --btn-hi: #4a4a4a;
+    --accent: #ff6f00;
+    --red: #c62828;
+    --green: #388e3c;
+    --lcd-bg: #1a2b1a;
+    --lcd-fg: #7dff7d;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #0d0d0d;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    display: flex; justify-content: center;
+    min-height: 100vh;
+  }
+  .remote {
+    width: 340px; max-width: 96vw;
+    margin: 18px 0 40px;
+    background: linear-gradient(160deg, var(--body-hi), var(--body) 40%);
+    border-radius: 34px;
+    padding: 22px 20px 30px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .brand {
+    text-align: center; color: #bbb;
+    font-weight: 800; letter-spacing: 4px; font-size: 15px;
+    margin-bottom: 12px;
+  }
+  .brand span { color: var(--accent); }
+  .lcd {
+    background: var(--lcd-bg);
+    border-radius: 10px;
+    border: 2px solid #111;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,.8);
+    color: var(--lcd-fg);
+    font-family: "Courier New", monospace;
+    font-size: 12px; line-height: 1.5;
+    padding: 10px 12px;
+    min-height: 58px;
+    margin-bottom: 16px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+  button {
+    appearance: none; border: 0; cursor: pointer;
+    background: linear-gradient(180deg, var(--btn-hi), var(--btn));
+    color: #eee; font-weight: 700; font-size: 13px;
+    border-radius: 12px; padding: 13px 6px;
+    box-shadow: 0 3px 0 #161616, inset 0 1px 0 rgba(255,255,255,.1);
+    flex: 1;
+    transition: transform .05s, filter .1s;
+  }
+  button:active { transform: translateY(2px); box-shadow: 0 1px 0 #161616; filter: brightness(1.2); }
+  button.busy { filter: brightness(.6); pointer-events: none; }
+  .pw-tv     { background: linear-gradient(180deg, #4caf50, var(--green)); color: #fff; }
+  .pw-static { background: linear-gradient(180deg, #757575, #555); }
+  .num {
+    font-size: 17px; padding: 15px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .num small { font-size: 9px; font-weight: 500; color: #aaa; letter-spacing: .5px; }
+  .accent { background: linear-gradient(180deg, #ff8f2e, var(--accent)); color: #201000; }
+  .redbtn { background: linear-gradient(180deg, #e05050, var(--red)); color: #fff; }
+  .label {
+    color: #888; font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-align: center; margin: 6px 0 8px;
+  }
+  .divider { height: 1px; background: rgba(255,255,255,.07); margin: 14px 0; }
+</style>
+</head>
+<body>
+<div class="remote">
+  <div class="brand">RETRO<span>TV</span></div>
+  <div class="lcd" id="lcd">connecting…</div>
+
+  <div class="row">
+    <button class="pw-tv" data-cmd="mode_tv">📺 TV</button>
+    <button class="pw-static" data-cmd="mode_static">🌀 STATIC</button>
+  </div>
+
+  <div class="label">CHANNELS</div>
+  <div class="grid">
+    <button class="num" data-cmd="ch_doug">1<small>DOUG</small></button>
+    <button class="num" data-cmd="ch_hey">2<small>ARNOLD</small></button>
+    <button class="num" data-cmd="ch_pokemon">3<small>POKÉMON</small></button>
+    <button class="num" data-cmd="ch_rugrats">4<small>RUGRATS</small></button>
+    <button class="num" data-cmd="ch_spongebob">5<small>SPONGEBOB</small></button>
+    <button class="num" data-cmd="ch_all">0<small>ALL</small></button>
+  </div>
+  <div class="row">
+    <button class="accent" data-cmd="ch_next">CH ▲ NEXT</button>
+  </div>
+  <div class="row">
+    <button data-cmd="pause">⏯ PAUSE</button>
+    <button data-cmd="mute">🔇 MUTE</button>
+  </div>
+
+  <div class="divider"></div>
+  <div class="label">SCREENS</div>
+  <div class="grid4">
+    <button data-cmd="sc_signal">SIGNAL</button>
+    <button data-cmd="sc_noise">NOISE</button>
+    <button data-cmd="sc_atx">ATX</button>
+    <button data-cmd="sc_ldn">LDN</button>
+    <button data-cmd="sc_bats">🦇 BATS</button>
+    <button data-cmd="sc_aqi">AQI</button>
+    <button data-cmd="sc_holiday">🎉 DAY</button>
+    <button data-cmd="sc_now">NOW</button>
+  </div>
+  <div class="row">
+    <button class="accent" data-cmd="sc_next">SCREEN ▲ NEXT</button>
+  </div>
+
+  <div class="divider"></div>
+  <div class="label">MODES</div>
+  <div class="row">
+    <button data-cmd="passive_on">CYCLE ON</button>
+    <button data-cmd="passive_off">CYCLE OFF</button>
+  </div>
+  <div class="row">
+    <button class="redbtn" data-cmd="broadcast_off">🌙 END DAY</button>
+    <button data-cmd="broadcast_on">☀️ RESUME</button>
+  </div>
+</div>
+
+<script>
+const lcd = document.getElementById("lcd");
+
+function fmtStatus(s) {
+  // "mode=TV channel=Pokemon screen=6 passive=on broadcast=on mute=unmuted"
+  const kv = {};
+  (s || "").split(/\s+/).forEach(p => { const [k,v] = p.split("="); if (k && v) kv[k]=v; });
+  if (!kv.mode) return s || "no status";
+  const lines = [];
+  lines.push(`MODE ${kv.mode}${kv.mode==="TV" ? "  CH "+(kv.channel||"?") : ""}`);
+  const screens = ["SIGNAL","NOISE","ATX","LDN","BATS","AQI","HOLIDAY","NOW"];
+  if (kv.mode !== "TV") lines.push(`SCREEN ${screens[+kv.screen] || kv.screen}`);
+  const flags = [];
+  if (kv.passive === "on") flags.push("CYCLE");
+  if (kv.broadcast === "off") flags.push("DAY ENDED");
+  if (kv.mute === "muted") flags.push("MUTED");
+  if (flags.length) lines.push(flags.join(" · "));
+  return lines.join("\n");
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("/api/status");
+    if (!r.ok) { lcd.textContent = "auth error (" + r.status + ")"; return; }
+    const j = await r.json();
+    lcd.textContent = fmtStatus(j.status);
+  } catch (e) { lcd.textContent = "offline"; }
+}
+
+async function send(cmd, btn) {
+  btn.classList.add("busy");
+  lcd.textContent = "sending " + cmd + "…";
+  try {
+    const r = await fetch("/api/cmd", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: cmd }),
+    });
+    const j = await r.json();
+    lcd.textContent = j.ok ? (j.output || "ok") : ("error: " + (j.output || j.error));
+  } catch (e) {
+    lcd.textContent = "network error";
+  }
+  btn.classList.remove("busy");
+  setTimeout(refresh, 2500);
+}
+
+document.querySelectorAll("button[data-cmd]").forEach(b => {
+  b.addEventListener("click", () => send(b.dataset.cmd, b));
+});
+
+refresh();
+setInterval(refresh, 15000);
+</script>
+</body>
+</html>
